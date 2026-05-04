@@ -116,9 +116,7 @@ def collection_detail(c_id):
     }
     return render_template("collection.html", collection=collection,
                            releases=releases, stats=stats)
-@app.route("/browse")
-def browse():
-    return render_template("browse.html", releases=mock_data.RELEASES)
+
 
 @app.route("/help")
 def help():
@@ -127,10 +125,6 @@ def help():
 @app.route("/browse")
 def browse():
     return render_template("browse.html", releases=db.get_releases())
-
-# @app.route("/help")
-# def help():
-#     return render_template("help.html")
 
 
 @app.route("/logout", methods=["POST"])
@@ -169,162 +163,6 @@ def add():
             return render_template("add.html")
     return render_template("add.html")
 
-@app.route("/release/<int:release_id>/delete", methods=["GET", "POST"])
-def delete(release_id):
-    release = get_releases_by_id().get(release_id)
-    if release is None:
-        flash("Release was not found", "error")
-        return redirect(url_for("home"))
-    
-    if request.method == "POST":
-        title = release["title"]
-        contributors = release["contributors"]
-        try:
-            db._cur.execute(f"DELETE FROM releases WHERE title = '{title}' AND contributors = '{contributors}'")
-            db._conn.commit()
-            flash(f"Release '{title}' was deleted.", "success")
-            return redirect(url_for("home"))
-        except Exception as e:
-            print(f"DELETE ERROR: {e}")
-            flash(f"Error deleting release", "error")
-            return redirect(url_for("home"))
-    return render_template("delete.html", release=release)
-
-@app.route("/release/<int:release_id>/edit", methods=["GET", "POST"])
-def edit(release_id):
-    release = get_releases_by_id().get(release_id)
-    if release is None:
-        flash("Release was not found", "error")
-        return redirect(url_for("home"))
-    
-    if request.method == "POST":
-        org_title = release["title"]
-        org_contributors = release["contributors"]
-        
-        title = request.form.get("title", "").strip()
-        contributors = request.form.get("contributors", "").strip()
-        r_type = request.form.get("r_type", "")
-        r_format = request.form.get("format", "")
-        r_date = request.form.get("r_date", "")
-        r_label = request.form.get("r_label", "").strip()
-        cover = request.form.get("cover", "").strip()
-        details = request.form.get("details", "").strip()
-        
-        if not title or not contributors or not r_type or not r_format or not r_date or not r_label:
-            flash("All required fields must be filled out", "error")
-            return render_template("edit.html", release=release)
-        
-        try:
-            db._cur.execute(
-                f"UPDATE releases SET "
-                f"title = '{title}', contributors = '{contributors}', "
-                f"r_type = '{r_type}', format = '{r_format}', "
-                f"r_date = '{r_date}', r_label = '{r_label}', "
-                f"cover = '{cover}', details = '{details}' "
-                f"WHERE title = '{org_title}' AND contributors = '{org_contributors}'" 
-            )
-            db._conn.commit()
-            flash(f"Release '{title}' was updated.", "success")
-            return redirect(url_for("home"))
-        except Exception as e:
-            print(f"UPDATE ERROR: {e}")
-            flash("Error updating release", "error")
-            return redirect(url_for("home"))
-    return render_template("edit.html", release = release)
-
-def get_collections(cid=-1):
-    """takes an optional input of a collection id, and returns either that collection id or all collections."""
-    if cid == -1:
-        return _get_all_collections()
-    else:
-        return _get_collection_cid(cid)
-
-
-def get_collections_by_id():
-    """Returns a dictionary with key pair relationship (collection_id, collection)"""
-    return {c["c_id"]: c for c in get_collections()}
-
-
-def get_collection_rids(cid=0):
-    """Returns a list of dictionaries of all collection data"""
-    titles = []
-    rids = []
-    for t in db.query(
-        f"""
-        SELECT distinct title
-        FROM has JOIN creates ON has.g_id = creates.g_id
-        WHERE c_id = {cid}
-        """
-    ): 
-        titles.append(t[0])
-
-    rids = []
-    for r in get_releases():
-        if r["title"] in titles:
-            rids.append(r["id"])
-    return rids
-
-
-def _get_all_collections():
-    """Returns list containing of dictionaries for all collections."""
-    collections = []
-    c_tbl = db.select(tbls="collection")
-
-    for c in c_tbl:
-        cdict = {
-            "c_id":         c[0],
-            "name":         f"Collection # {c[0]}",
-            "release_ids":  get_collection_rids(c[0])
-        }
-        collections.append(cdict)
-    return collections
-
-
-def _get_collection_cid(cid):
-    """Returns a list containing the desired collection"""
-    collections = []
-    c_tbl = db.select(tbls="collection")
-
-    for c in c_tbl:
-        if cid == c[0]:
-            cdict = {
-                "c_id":         c[0],
-                "name":         f"Collection # {c[0]}",
-                "release_ids":  get_collection_rids(c[0])
-            }
-            collections.append(cdict)
-    return collections
-
-
-def get_releases():
-    """Returns a dictionary with all releases in the DB"""
-    r_tbl = db.select(tbls="releases") # list of tuples, tuple elems are varying types
-    releases = [] # a list of dictionaries
-
-    rid = 1
-    for r in r_tbl:
-        tracks, genres = get_tracks(r[0])
-        rdict = {
-            "id":           rid,
-            "title":        r[0],
-            "contributors": r[1],
-            "r_type":       r[2],
-            "format":       r[3],
-            "r_date":       str( r[4] ),
-            "r_label":      r[5],
-            "cover":        r[6],
-            "genre":        genres,
-            "details":      r[7],
-            "tracks":       tracks,
-        }
-        releases.append(rdict)
-        rid += 1
-    return releases
-
-
-def get_releases_by_id():
-    """Returns a dictionary with a key pair of (release_id, release)""" 
-    return {r["id"]: r for r in get_releases()}
 
 
 def get_tracks(album):
