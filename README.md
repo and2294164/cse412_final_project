@@ -13,9 +13,10 @@ Flask frontend for the CSE 412 music library project (Phase 3). Currently uses m
 - I think that's it but I've been working almost nonstop for like 8 hours im tired.
 ## Setup
 
-**Prerequisites:** Python 3.9+
+**Prerequisites:** Python 3.9+, PostgreSQL
 
 ```bash
+# 0. Create a database in PostgreSQL
 # 1. Create and activate a virtual environment
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
